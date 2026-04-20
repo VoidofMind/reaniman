@@ -1,0 +1,812 @@
+-- ReAnimanSpawner
+-- Place in ServerScriptService
+-- Spawns a ReAniman NPC in front of the nearest player
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+-- ── WAIT FOR A PLAYER ────────────────────────────────────────────────────────
+local function getNearestPlayer()
+	local nearest = nil
+	local shortestDist = math.huge
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		local char = player.Character
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			-- For spawning purposes, just pick the first/only player,
+			-- or the one closest to world origin
+			local dist = char.HumanoidRootPart.Position.Magnitude
+			if dist < shortestDist then
+				shortestDist = dist
+				nearest = player
+			end
+		end
+	end
+
+	return nearest
+end
+
+local function waitForNearestPlayer()
+	while true do
+		local p = getNearestPlayer()
+		if p then return p end
+		task.wait(0.5)
+	end
+end
+
+-- ── BUILD THE NPC ─────────────────────────────────────────────────────────────
+local function buildNPC(spawnCFrame)
+
+	-- ── MODEL ────────────────────────────────────────────────────────────────
+	local ReAniman = Instance.new("Model")
+	ReAniman.Name = "ReAniman"
+
+	-- ── PARTS ────────────────────────────────────────────────────────────────
+	local Head = Instance.new("Part")
+	Head.Name = "Head"
+	Head.TopSurface = Enum.SurfaceType.Smooth
+	Head.Color = Color3.new(1, 0.8, 1)
+	Head.Size = Vector3.new(2, 1, 1)
+	Head.BrickColor = BrickColor.new("Pastel orange")
+	Head.Parent = ReAniman
+
+	local Mesh = Instance.new("SpecialMesh")
+	Mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+	Mesh.Parent = Head
+
+	-- Head Attachments
+	local function makeAttachment(name, pos, parent)
+		local a = Instance.new("Attachment")
+		a.Name = name
+		a.Position = pos
+		a.Parent = parent
+		return a
+	end
+	makeAttachment("HairAttachment",       Vector3.new(0,  0.6,  0),   Head)
+	makeAttachment("HatAttachment",        Vector3.new(0,  0.6,  0),   Head)
+	makeAttachment("FaceFrontAttachment",  Vector3.new(0,  0,   -0.6), Head)
+	makeAttachment("FaceCenterAttachment", Vector3.new(0,  0,    0),   Head)
+
+	local face = Instance.new("Decal")
+	face.Name = "face"
+	face.Texture = "rbxassetid://58425273"
+	face.Parent = Head
+
+	-- Torso
+	local Torso = Instance.new("Part")
+	Torso.Name = "Torso"
+	Torso.Color = Color3.new(1, 0.8, 1)
+	Torso.RightSurface = Enum.SurfaceType.Weld
+	Torso.LeftSurface  = Enum.SurfaceType.Weld
+	Torso.Size = Vector3.new(2, 2, 1)
+	Torso.BrickColor = BrickColor.new("Pastel orange")
+	Torso.Parent = ReAniman
+
+	makeAttachment("NeckAttachment",        Vector3.new(0,   1,     0),    Torso)
+	makeAttachment("BodyFrontAttachment",   Vector3.new(0,   0,    -0.5),  Torso)
+	makeAttachment("BodyBackAttachment",    Vector3.new(0,   0,     0.5),  Torso)
+	makeAttachment("LeftCollarAttachment",  Vector3.new(-1,  1,     0),    Torso)
+	makeAttachment("RightCollarAttachment", Vector3.new(1,   1,     0),    Torso)
+	makeAttachment("WaistFrontAttachment",  Vector3.new(0,  -1,    -0.5),  Torso)
+	makeAttachment("WaistCenterAttachment", Vector3.new(0,  -1,     0),    Torso)
+	makeAttachment("WaistBackAttachment",   Vector3.new(0,  -1,     0.5),  Torso)
+
+	-- Arms
+	local LeftArm = Instance.new("Part")
+	LeftArm.Name = "Left Arm"
+	LeftArm.Color = Color3.new(1, 0.8, 1)
+	LeftArm.Size = Vector3.new(1, 2, 1)
+	LeftArm.CanCollide = false
+	LeftArm.BrickColor = BrickColor.new("Pastel orange")
+	LeftArm.Parent = ReAniman
+	makeAttachment("LeftShoulderAttachment", Vector3.new(0,  1, 0), LeftArm)
+	makeAttachment("LeftGripAttachment",     Vector3.new(0, -1, 0), LeftArm)
+
+	local RightArm = Instance.new("Part")
+	RightArm.Name = "Right Arm"
+	RightArm.Color = Color3.new(1, 0.8, 1)
+	RightArm.Size = Vector3.new(1, 2, 1)
+	RightArm.CanCollide = false
+	RightArm.BrickColor = BrickColor.new("Pastel orange")
+	RightArm.Parent = ReAniman
+	makeAttachment("RightShoulderAttachment", Vector3.new(0,  1, 0), RightArm)
+	makeAttachment("RightGripAttachment",     Vector3.new(0, -1, 0), RightArm)
+
+	-- Legs
+	local LeftLeg = Instance.new("Part")
+	LeftLeg.Name = "Left Leg"
+	LeftLeg.Color = Color3.new(1, 0.8, 1)
+	LeftLeg.Size = Vector3.new(1, 2, 1)
+	LeftLeg.BottomSurface = Enum.SurfaceType.Smooth
+	LeftLeg.CanCollide = false
+	LeftLeg.BrickColor = BrickColor.new("Pastel orange")
+	LeftLeg.Parent = ReAniman
+	makeAttachment("LeftFootAttachment", Vector3.new(0, -1, 0), LeftLeg)
+
+	local RightLeg = Instance.new("Part")
+	RightLeg.Name = "Right Leg"
+	RightLeg.Color = Color3.new(1, 0.8, 1)
+	RightLeg.Size = Vector3.new(1, 2, 1)
+	RightLeg.BottomSurface = Enum.SurfaceType.Smooth
+	RightLeg.CanCollide = false
+	RightLeg.BrickColor = BrickColor.new("Pastel orange")
+	RightLeg.Parent = ReAniman
+	makeAttachment("RightFootAttachment", Vector3.new(0, -1, 0), RightLeg)
+
+	-- HumanoidRootPart
+	local HRP = Instance.new("Part")
+	HRP.Name = "HumanoidRootPart"
+	HRP.TopSurface    = Enum.SurfaceType.Smooth
+	HRP.BottomSurface = Enum.SurfaceType.Smooth
+	HRP.Size = Vector3.new(2, 2, 1)
+	HRP.CanCollide = false
+	HRP.Transparency = 1
+	HRP.BrickColor = BrickColor.new("Medium stone grey")
+	HRP.Parent = ReAniman
+	makeAttachment("RootAttachment", Vector3.new(0, 0, 0), HRP)
+
+	-- ── MOTORS (R6 joints) ───────────────────────────────────────────────────
+	local function makeMotor(name, parent, part0, part1, c0, c1)
+		local m = Instance.new("Motor6D")
+		m.Name = name
+		m.MaxVelocity = 0.1
+		m.C0 = c0
+		m.C1 = c1
+		m.Part0 = part0
+		m.Part1 = part1
+		m.Parent = parent
+		return m
+	end
+
+	makeMotor("RootJoint",      HRP,   HRP,   Torso,
+		CFrame.new(0,0,0, 0,-1,0, 0,0,-1, -1,0,0),
+		CFrame.new(0,0,0, 0,-1,0, 0,0,-1, -1,0,0))
+
+	makeMotor("Neck",           Torso, Torso, Head,
+		CFrame.new(0, 1, 0, 0,-1,0, 0,0,-1, -1,0,0),
+		CFrame.new(0,-0.5,0, 0,-1,0, 0,0,-1, -1,0,0))
+
+	makeMotor("Right Shoulder", Torso, Torso, RightArm,
+		CFrame.new(1, 0.5, 0, -1,0,0, 0,0,1, 0,1,0),
+		CFrame.new(-0.5,0.5,0, -1,0,0, 0,0,1, 0,1,0))
+
+	makeMotor("Left Shoulder",  Torso, Torso, LeftArm,
+		CFrame.new(-1, 0.5, 0, 1,0,0, 0,0,-1, 0,1,0),
+		CFrame.new(0.5, 0.5, 0, 1,0,0, 0,0,-1, 0,1,0))
+
+	makeMotor("Right Hip",      Torso, Torso, RightLeg,
+		CFrame.new(1,-1,0, -1,0,0, 0,0,1, 0,1,0),
+		CFrame.new(0.5,1,0, -1,0,0, 0,0,1, 0,1,0))
+
+	makeMotor("Left Hip",       Torso, Torso, LeftLeg,
+		CFrame.new(-1,-1,0, 1,0,0, 0,0,-1, 0,1,0),
+		CFrame.new(-0.5,1,0, 1,0,0, 0,0,-1, 0,1,0))
+
+	-- ── HUMANOID ─────────────────────────────────────────────────────────────
+	local Humanoid = Instance.new("Humanoid")
+	Humanoid.Parent = ReAniman
+
+	Instance.new("Animator").Parent = Humanoid
+
+	local HD = Instance.new("HumanoidDescription")
+	HD.ProportionScale = 0
+	HD.BodyTypeScale   = 0
+	HD.Parent = Humanoid
+
+	-- ── BODY COLORS ──────────────────────────────────────────────────────────
+	local BC = Instance.new("BodyColors")
+	BC.Name = "Body Colors"
+	BC.HeadColor3     = Color3.new(1, 0.8, 1)
+	BC.TorsoColor3    = Color3.new(1, 0.8, 1)
+	BC.LeftArmColor3  = Color3.new(1, 0.8, 1)
+	BC.RightArmColor3 = Color3.new(1, 0.8, 1)
+	BC.LeftLegColor3  = Color3.new(1, 0.8, 1)
+	BC.RightLegColor3 = Color3.new(1, 0.8, 1)
+	BC.HeadColor      = BrickColor.new("Pastel orange")
+	BC.TorsoColor     = BrickColor.new("Pastel orange")
+	BC.LeftArmColor   = BrickColor.new("Pastel orange")
+	BC.RightArmColor  = BrickColor.new("Pastel orange")
+	BC.LeftLegColor   = BrickColor.new("Pastel orange")
+	BC.RightLegColor  = BrickColor.new("Pastel orange")
+	BC.Parent = ReAniman
+
+	-- ── VALUES ───────────────────────────────────────────────────────────────
+	local Infected = Instance.new("BoolValue")
+	Infected.Name  = "Infected"
+	Infected.Value = true
+	Infected.Parent = ReAniman
+
+	local Value = Instance.new("IntValue")
+	Value.Name   = "Value"
+	Value.Parent = ReAniman
+
+	local InfectionIndex = Instance.new("IntValue")
+	InfectionIndex.Name  = "InfectionIndex"
+	InfectionIndex.Value = 0
+	InfectionIndex.Parent = ReAniman
+
+	-- ── CLOTHING ─────────────────────────────────────────────────────────────
+	local Shirt = Instance.new("Shirt")
+	Shirt.Name          = "Armor"
+	Shirt.ShirtTemplate = "rbxassetid://106244612852721"
+	Shirt.Parent        = ReAniman
+
+	local Pants = Instance.new("Pants")
+	Pants.PantsTemplate = "rbxassetid://130747433979925"
+	Pants.Parent        = ReAniman
+
+	-- ── ACCESSORY: Faceplate ─────────────────────────────────────────────────
+	local Faceplate = Instance.new("Accessory")
+	Faceplate.Name = "Faceplate"
+	Faceplate.Parent = ReAniman
+
+	local FP_Handle = Instance.new("MeshPart")
+	FP_Handle.Name        = "Handle"
+	FP_Handle.TextureID   = "rbxassetid://126580187511997"
+	FP_Handle.MeshId      = "rbxassetid://107134811435339"
+	FP_Handle.Size        = Vector3.new(1.30, 1.53, 1.36)
+	FP_Handle.CanCollide  = false
+	FP_Handle.BrickColor  = BrickColor.new("Medium stone grey")
+	FP_Handle.Parent      = Faceplate
+
+	local FP_HatAtt = Instance.new("Attachment")
+	FP_HatAtt.Name     = "HatAttachment"
+	FP_HatAtt.Position = Vector3.new(0, 0.49, -0.02)
+	FP_HatAtt.Parent   = FP_Handle
+
+	local FP_Scale = Instance.new("StringValue")
+	FP_Scale.Name  = "AvatarPartScaleType"
+	FP_Scale.Value = "Classic"
+	FP_Scale.Parent = FP_Handle
+
+	local FP_OrigSize = Instance.new("Vector3Value")
+	FP_OrigSize.Name  = "OriginalSize"
+	FP_OrigSize.Value = Vector3.new(1.30, 1.53, 1.36)
+	FP_OrigSize.Parent = FP_Handle
+
+	local FP_Weld = Instance.new("Weld")
+	FP_Weld.Name  = "AccessoryWeld"
+	FP_Weld.Part0 = FP_Handle
+	FP_Weld.Part1 = Head
+	FP_Weld.C0    = CFrame.new(0, 0.49, -0.02)
+	FP_Weld.C1    = CFrame.new(0, 0.6,  0)
+	FP_Weld.Parent = FP_Handle
+
+	-- ── ACCESSORY: Guard ─────────────────────────────────────────────────────
+	local Guard = Instance.new("Accessory")
+	Guard.Name = "Guard"
+	Guard.Parent = ReAniman
+
+	local G_Handle = Instance.new("MeshPart")
+	G_Handle.Name       = "Handle"
+	G_Handle.TextureID  = "rbxassetid://125015438973350"
+	G_Handle.MeshId     = "rbxassetid://134586013582402"
+	G_Handle.Size       = Vector3.new(1.18, 1.23, 1.29)
+	G_Handle.CanCollide = false
+	G_Handle.BrickColor = BrickColor.new("Medium stone grey")
+	G_Handle.Parent     = Guard
+
+	local G_LSAtt = Instance.new("Attachment")
+	G_LSAtt.Name     = "LeftShoulderAttachment"
+	G_LSAtt.Position = Vector3.new(0.26, 0.32, 0)
+	G_LSAtt.Parent   = G_Handle
+
+	local G_Scale = Instance.new("StringValue")
+	G_Scale.Name  = "AvatarPartScaleType"
+	G_Scale.Value = "Classic"
+	G_Scale.Parent = G_Handle
+
+	local G_OrigSize = Instance.new("Vector3Value")
+	G_OrigSize.Name  = "OriginalSize"
+	G_OrigSize.Value = Vector3.new(1.18, 1.23, 1.29)
+	G_OrigSize.Parent = G_Handle
+
+	local G_Weld = Instance.new("Weld")
+	G_Weld.Name  = "AccessoryWeld"
+	G_Weld.Part0 = G_Handle
+	G_Weld.Part1 = LeftArm
+	G_Weld.C0    = CFrame.new(0.26, 0.32, 0)
+	G_Weld.C1    = CFrame.new(0, 1, 0)
+	G_Weld.Parent = G_Handle
+
+	-- ── ANIMATIONS FOLDER ────────────────────────────────────────────────────
+	local AnimFolder = Instance.new("Folder")
+	AnimFolder.Name = "Animations"
+	AnimFolder.Parent = ReAniman
+
+	-- Pull animation modules from the asset
+	-- Asset 127956295675261 is expected to be a Model/ModuleScript package
+	-- We insert it and reparent its children into our Animations folder
+	local animAsset = game:GetService("InsertService"):LoadAsset(127956295675261)
+	if animAsset then
+		-- The asset may be wrapped in a Model; find the children
+		local function findModules(parent)
+			for _, child in ipairs(parent:GetChildren()) do
+				if child:IsA("ModuleScript") then
+					child.Parent = AnimFolder
+				elseif child:IsA("Model") or child:IsA("Folder") then
+					findModules(child)
+				end
+			end
+		end
+		findModules(animAsset)
+		animAsset:Destroy()
+	end
+
+	-- Fallback stubs if asset modules are missing (so scripts don't error)
+	local animNames = {"Idle", "Walk", "Run", "Jump", "Fall"}
+	for _, animName in ipairs(animNames) do
+		if not AnimFolder:FindFirstChild(animName) then
+			local stub = Instance.new("ModuleScript")
+			stub.Name   = animName
+			stub.Source = [[
+return {
+	_Keyframes = {
+		{ Time = 0,   CFrames = {} },
+		{ Time = 0.1, CFrames = {} },
+	}
+}
+]]
+			stub.Parent = AnimFolder
+		end
+	end
+
+	-- ── SCRIPTS ──────────────────────────────────────────────────────────────
+
+	-- ReAnimator
+	local ReAnimator = Instance.new("Script")
+	ReAnimator.Name = "ReAnimator"
+	ReAnimator.Source = [[
+local RunService = game:GetService("RunService")
+
+local character  = script.Parent
+local humanoid   = character:WaitForChild("Humanoid")
+local rootPart   = character:WaitForChild("HumanoidRootPart")
+local torso      = character:WaitForChild("Torso")
+
+local RUN_SPEED  = 25
+
+local animFolder = character:WaitForChild("Animations")
+local anims = {
+	Idle = require(animFolder:WaitForChild("Idle")),
+	Walk = require(animFolder:WaitForChild("Walk")),
+	Run  = animFolder:FindFirstChild("Run")  and require(animFolder.Run),
+	Jump = require(animFolder:WaitForChild("Jump")),
+	Fall = require(animFolder:WaitForChild("Fall")),
+}
+
+local currentAnim = nil
+local animTime    = 0
+local defaultC0s  = {}
+
+local joints = {
+	HumanoidRootPart_Torso  = rootPart:FindFirstChild("RootJoint"),
+	Torso_Head              = torso:FindFirstChild("Neck"),
+	["Torso_Left Arm"]      = torso:FindFirstChild("Left Shoulder"),
+	["Torso_Right Arm"]     = torso:FindFirstChild("Right Shoulder"),
+	["Torso_Left Leg"]      = torso:FindFirstChild("Left Hip"),
+	["Torso_Right Leg"]     = torso:FindFirstChild("Right Hip"),
+}
+
+for name, motor in pairs(joints) do
+	if motor then defaultC0s[name] = motor.C0 end
+end
+
+local function playAnimation(anim)
+	if currentAnim == anim then return end
+	currentAnim = anim
+	animTime    = 0
+end
+
+local function lerpCFrame(a, b, t) return a:Lerp(b, t) end
+
+RunService.Heartbeat:Connect(function(dt)
+	local velocity        = rootPart.Velocity
+	local horizontalSpeed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
+
+	if humanoid.FloorMaterial == Enum.Material.Air then
+		if velocity.Y > 0 then playAnimation(anims.Jump)
+		else                   playAnimation(anims.Fall) end
+	else
+		if horizontalSpeed >= RUN_SPEED and anims.Run then
+			playAnimation(anims.Run)
+		elseif horizontalSpeed > 0.1 then
+			playAnimation(anims.Walk)
+		else
+			playAnimation(anims.Idle)
+		end
+	end
+
+	if not currentAnim then return end
+	local keyframes = currentAnim._Keyframes
+	if not keyframes then return end
+
+	animTime += dt
+	local duration = keyframes[#keyframes].Time
+	if animTime > duration then animTime = animTime % duration end
+
+	local kf1, kf2 = keyframes[1], keyframes[#keyframes]
+	for i = 1, #keyframes - 1 do
+		if keyframes[i].Time <= animTime and keyframes[i+1].Time >= animTime then
+			kf1 = keyframes[i]; kf2 = keyframes[i+1]; break
+		end
+	end
+
+	local alpha = (animTime - kf1.Time) / math.max(kf2.Time - kf1.Time, 0.001)
+	for jointName, c1 in pairs(kf1.CFrames) do
+		local motor = joints[jointName]
+		if motor and defaultC0s[jointName] then
+			local c2 = kf2.CFrames[jointName] or c1
+			motor.C0 = defaultC0s[jointName] * lerpCFrame(c1, c2, alpha)
+		end
+	end
+end)
+]]
+	ReAnimator.Parent = ReAniman
+
+	-- Stuck
+	local Stuck = Instance.new("Script")
+	Stuck.Name = "Stuck"
+	Stuck.Source = [[
+local npc       = script.Parent
+local humanoid  = npc:WaitForChild("Humanoid")
+local rootPart  = npc:WaitForChild("HumanoidRootPart")
+
+local STUCK_THRESHOLD = 0.5
+local STUCK_TIME      = 2
+local RAY_DISTANCE    = 5
+local LEDGE_CHECK_DIST = 6
+
+local lastPos  = rootPart.Position
+local timeStuck = 0
+
+local function checkEnvironment()
+	local fwd       = rootPart.CFrame.LookVector
+	local origin    = rootPart.Position
+
+	local wallRay   = Ray.new(origin, fwd * RAY_DISTANCE)
+	local hitWall   = workspace:FindPartOnRayWithIgnoreList(wallRay, {npc})
+	if hitWall then return true end
+
+	local ledgeOrigin = origin + fwd * 3
+	local ledgeRay    = Ray.new(ledgeOrigin, Vector3.new(0, -LEDGE_CHECK_DIST, 0))
+	local hitFloor    = workspace:FindPartOnRayWithIgnoreList(ledgeRay, {npc})
+	if not hitFloor then return true end
+
+	return false
+end
+
+while task.wait(0.5) do
+	if humanoid.MoveDirection.Magnitude > 0 then
+		if checkEnvironment() then humanoid.Jump = true end
+
+		local distanceMoved = (rootPart.Position - lastPos).Magnitude
+		if distanceMoved < STUCK_THRESHOLD then
+			timeStuck += 0.5
+		else
+			timeStuck = 0
+		end
+
+		if timeStuck >= STUCK_TIME then
+			humanoid.Jump = true
+			timeStuck = 0
+		end
+
+		lastPos = rootPart.Position
+	else
+		timeStuck = 0
+		lastPos   = rootPart.Position
+	end
+end
+]]
+	Stuck.Parent = ReAniman
+
+	-- Death
+	local Death = Instance.new("Script")
+	Death.Name = "Death"
+	Death.Source = [[
+local model    = script.Parent
+local humanoid = model:FindFirstChild("Humanoid")
+local root     = model:FindFirstChild("HumanoidRootPart")
+
+local death1 = Instance.new("Sound")
+death1.SoundId            = "rbxassetid://127125769464347"
+death1.Volume             = 1.25
+death1.RollOffMaxDistance = 60
+death1.Parent = root
+
+if humanoid then
+	humanoid.HealthChanged:Connect(function(health)
+		if health < 1 then
+			death1:Play()
+			game:GetService("Debris"):AddItem(death1, 5)
+			task.wait(3)
+			if model and model.Parent then model:Destroy() end
+		end
+	end)
+end
+]]
+	Death.Parent = ReAniman
+
+	-- ZombieInfect
+	local ZombieInfect = Instance.new("Script")
+	ZombieInfect.Name = "ZombieInfect"
+	ZombieInfect.Source = [[
+local NPC      = script.Parent
+local Humanoid = NPC:WaitForChild("Humanoid")
+local Root     = NPC:WaitForChild("HumanoidRootPart")
+local Players  = game:GetService("Players")
+local ACTIVE   = true
+
+local ambientSound = Instance.new("Sound")
+ambientSound.SoundId            = "rbxassetid://128249830546022"
+ambientSound.Volume             = 1
+ambientSound.RollOffMaxDistance = 40
+ambientSound.Parent = Root
+task.spawn(function()
+	while true do task.wait(math.random(2, 12)); ambientSound:Play() end
+end)
+
+local function getAllCharacters()
+	local chars = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			table.insert(chars, player.Character)
+		end
+	end
+	for _, model in ipairs(workspace:GetChildren()) do
+		if model:IsA("Model") and model:FindFirstChild("Humanoid") and model ~= NPC then
+			table.insert(chars, model)
+		end
+	end
+	return chars
+end
+
+local function getInfectionValue(char)
+	local val = char:FindFirstChild("InfectionIndex")
+	return val and val.Value or nil
+end
+
+local function getInfectionLeader()
+	local lowest, leader = math.huge, nil
+	for _, char in ipairs(getAllCharacters()) do
+		local val = getInfectionValue(char)
+		if val and val < lowest then lowest = val; leader = char end
+	end
+	return leader
+end
+
+local function getNearestTarget()
+	local nearest, dist = nil, 9999999
+	for _, char in ipairs(getAllCharacters()) do
+		if char ~= NPC and char:FindFirstChild("HumanoidRootPart") then
+			local infected = char:FindFirstChild("Infected")
+			if not infected or not infected.Value then
+				local d = (char.HumanoidRootPart.Position - Root.Position).Magnitude
+				if d < dist then dist = d; nearest = char end
+			end
+		end
+	end
+	return nearest
+end
+
+local NPC_ACCESSORIES = {}
+for _, child in ipairs(NPC:GetChildren()) do
+	if child:IsA("Accessory") and (child.Name == "Faceplate" or child.Name == "Guard") then
+		table.insert(NPC_ACCESSORIES, child)
+	end
+end
+local NPC_SHIRT      = NPC:FindFirstChildOfClass("Shirt")
+local NPC_PANTS      = NPC:FindFirstChildOfClass("Pants")
+local NPC_BODYCOLORS = NPC:FindFirstChildOfClass("BodyColors")
+
+local function applyAppearance(char)
+	for _, child in ipairs(char:GetChildren()) do
+		if child:IsA("Accessory") then
+			local handle = child:FindFirstChild("Handle")
+			if handle then
+				local att = handle:FindFirstChildOfClass("Attachment")
+				if att and (att.Name == "HatAttachment" or att.Name == "HairAttachment"
+					or att.Name == "FaceFrontAttachment" or att.Name == "FaceCenterAttachment") then
+					child:Destroy()
+				end
+			end
+		end
+	end
+	for _, child in ipairs(char:GetChildren()) do
+		if child:IsA("Shirt") or child:IsA("Pants") then child:Destroy() end
+	end
+	for _, acc in ipairs(NPC_ACCESSORIES) do acc:Clone().Parent = char end
+	if NPC_SHIRT  then NPC_SHIRT:Clone().Parent  = char end
+	if NPC_PANTS  then NPC_PANTS:Clone().Parent  = char end
+	local bc = char:FindFirstChildOfClass("BodyColors")
+	if not bc then
+		bc = NPC_BODYCOLORS and NPC_BODYCOLORS:Clone() or Instance.new("BodyColors")
+		bc.Parent = char
+	end
+	for _, prop in ipairs({"HeadColor3","TorsoColor3","LeftArmColor3","RightArmColor3","LeftLegColor3","RightLegColor3"}) do
+		local c = bc[prop]
+		bc[prop] = Color3.fromRGB(math.floor(c.R*255), 255, math.floor(c.B*255))
+	end
+end
+
+local function infectTarget(target)
+	if target:FindFirstChild("Infected") then return end
+	local infected = Instance.new("BoolValue")
+	infected.Name = "Infected"; infected.Value = true; infected.Parent = target
+
+	local s1 = Instance.new("Sound")
+	s1.SoundId = "rbxassetid://138126646456257"; s1.Volume = 1
+	s1.RollOffMaxDistance = 60; s1.Parent = Root; s1:Play()
+	game:GetService("Debris"):AddItem(s1, 10)
+
+	local s2 = Instance.new("Sound")
+	s2.SoundId = "rbxassetid://131929580206847"; s2.Volume = 1.25
+	s2.RollOffMaxDistance = 60; s2.Parent = Root; s2:Play()
+	game:GetService("Debris"):AddItem(s2, 5)
+
+	local highest = 0
+	for _, char in ipairs(getAllCharacters()) do
+		local val = getInfectionValue(char)
+		if val and val > highest then highest = val end
+	end
+	local npcVal = getInfectionValue(NPC)
+	if npcVal and npcVal > highest then highest = npcVal end
+
+	local idx = Instance.new("IntValue")
+	idx.Name = "InfectionIndex"; idx.Value = highest + 1; idx.Parent = target
+	applyAppearance(target)
+end
+
+local function copyAppearance(from, to)
+	for _, item in ipairs(from:GetChildren()) do
+		if item:IsA("Accessory") or item:IsA("Shirt") or item:IsA("Pants") or item:IsA("BodyColors") then
+			item:Clone().Parent = to
+		end
+	end
+	local head = from:FindFirstChild("Head")
+	local cloneHead = to:FindFirstChild("Head")
+	if head and cloneHead then
+		local face = head:FindFirstChildOfClass("Decal")
+		if face then face:Clone().Parent = cloneHead end
+	end
+end
+
+local function assimilate(target)
+	local clone = NPC:Clone()
+	clone.Parent = workspace
+	local targetRoot = target:FindFirstChild("HumanoidRootPart")
+	if targetRoot and clone.PrimaryPart then
+		clone:SetPrimaryPartCFrame(targetRoot.CFrame)
+	end
+	copyAppearance(target, clone)
+	local ti = target:FindFirstChild("InfectionIndex")
+	local ci = clone:FindFirstChild("InfectionIndex")
+	if ti then
+		if ci then ci.Value = ti.Value
+		else
+			local ni = Instance.new("IntValue")
+			ni.Name = "InfectionIndex"; ni.Value = ti.Value; ni.Parent = clone
+		end
+	end
+	if not clone:FindFirstChild("Infected") then
+		local inf = Instance.new("BoolValue"); inf.Name = "Infected"
+		inf.Value = true; inf.Parent = clone
+	end
+	applyAppearance(clone)
+	local hum = target:FindFirstChildOfClass("Humanoid")
+	if hum then hum.Health = 0 end
+	task.delay(0.2, function() if target then target:Destroy() end end)
+	local oldAI = clone:FindFirstChild(script.Name)
+	if oldAI then oldAI:Destroy() end
+	local assim = clone:FindFirstChild("Assimilee")
+	if assim then assim.Disabled = false end
+end
+
+local INFECT_RADIUS = 12
+local function checkProximityInfection()
+	if not ACTIVE then return end
+	for _, char in ipairs(getAllCharacters()) do
+		if char == NPC then continue end
+		local charRoot = char:FindFirstChild("HumanoidRootPart")
+		local hum = char:FindFirstChild("Humanoid")
+		if not charRoot or not hum then continue end
+		local infected = char:FindFirstChild("Infected")
+		if infected and infected.Value then continue end
+		if (charRoot.Position - Root.Position).Magnitude <= INFECT_RADIUS then
+			ACTIVE = false
+			infectTarget(char)
+			assimilate(char)
+			task.wait(0.5)
+			ACTIVE = true
+		end
+	end
+end
+
+local function congaMove(center, index)
+	local angle = tick() + index
+	return center.Position + Vector3.new(math.cos(angle)*8, 0, math.sin(angle)*8)
+end
+
+local function getWalkSpeed(char)
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	return hum and hum.WalkSpeed or 16
+end
+
+local JUMP_Y_THRESHOLD = 2.5
+local function tryJumpToTarget(targetRoot)
+	local yDiff = targetRoot.Position.Y - Root.Position.Y
+	if yDiff > JUMP_Y_THRESHOLD then
+		local gravity = workspace.Gravity
+		local power = math.sqrt(2 * gravity * yDiff) * (Humanoid.HipHeight + 1)
+		Humanoid.JumpPower = math.clamp(power, 50, 500)
+		Humanoid.Jump = true
+	end
+end
+
+if not NPC:FindFirstChild("InfectionIndex") then
+	local ri = Instance.new("IntValue"); ri.Name = "InfectionIndex"
+	ri.Value = 0; ri.Parent = NPC
+end
+if not NPC:FindFirstChild("Infected") then
+	local inf = Instance.new("BoolValue"); inf.Name = "Infected"
+	inf.Value = true; inf.Parent = NPC
+end
+
+while true do
+	task.wait(0.1)
+	checkProximityInfection()
+	local target = getNearestTarget()
+	if target and target:FindFirstChild("HumanoidRootPart") then
+		local dist = (target.HumanoidRootPart.Position - Root.Position).Magnitude
+		Humanoid.WalkSpeed = dist > 80 and 100 or getWalkSpeed(target) + 10
+		tryJumpToTarget(target.HumanoidRootPart)
+		Humanoid:MoveTo(target.HumanoidRootPart.Position)
+	else
+		local leader = getInfectionLeader()
+		if leader and leader:FindFirstChild("HumanoidRootPart") then
+			Humanoid.WalkSpeed = getWalkSpeed(leader) + 10
+			local myIndex = getInfectionValue(NPC) or 1
+			Humanoid:MoveTo(congaMove(leader.HumanoidRootPart, myIndex))
+		else
+			Humanoid.WalkSpeed = 16
+		end
+	end
+end
+]]
+	ZombieInfect.Parent = ReAniman
+
+	-- ZombieInfected (disabled clone of ZombieInfect)
+	local ZombieInfected = Instance.new("Script")
+	ZombieInfected.Name     = "ZombieInfected"
+	ZombieInfected.Source   = ZombieInfect.Source
+	ZombieInfected.Disabled = true
+	ZombieInfected.Parent   = ReAniman
+
+	-- Handler (stub — the real one lives in ServerScriptService)
+	local Handler = Instance.new("Script")
+	Handler.Name = "Handler"
+	Handler.Source = [[-- Managed externally by ReAnimanHandler in ServerScriptService]]
+	Handler.Disabled = true
+	Handler.Parent = ReAniman
+
+	-- ── PIVOT MODEL TO SPAWN POSITION ────────────────────────────────────────
+	ReAniman.PrimaryPart = HRP
+	ReAniman.Parent = workspace
+	ReAniman:PivotTo(spawnCFrame)
+
+	return ReAniman
+end
+
+-- ── SPAWN IN FRONT OF NEAREST PLAYER ─────────────────────────────────────────
+local player = waitForNearestPlayer()
+local char   = player.Character or player.CharacterAdded:Wait()
+local root   = char:WaitForChild("HumanoidRootPart")
+
+-- 8 studs in front of the player, slightly above ground
+local spawnOffset = root.CFrame * CFrame.new(0, 0, -8)
+spawnOffset = CFrame.new(spawnOffset.Position + Vector3.new(0, 3, 0))
+
+local npc = buildNPC(spawnOffset)
+print("[ReAnimanSpawner] ReAniman spawned in front of", player.Name)
